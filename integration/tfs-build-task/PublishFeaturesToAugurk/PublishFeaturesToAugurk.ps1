@@ -3,8 +3,9 @@ param(
 	[Parameter(Mandatory=$true)][string] $features,
 	[Parameter(Mandatory=$true)][string] $connectedServiceName,
 	[Parameter(Mandatory=$true)][string] $productName,
-	[Parameter(Mandatory=$true)][string] $groupName,
 	[Parameter(Mandatory=$true)][string] $version,
+	[Parameter(Mandatory=$true)][string] $useFolderStructure,
+	[Parameter(Mandatory=$false)][string] $groupName,
 	[Parameter(Mandatory=$true)][string] $language,
 	[Parameter(Mandatory=$true)][string] $augurkLocation,
 	[Parameter(Mandatory=$true)][string] $treatWarningsAsErrors
@@ -14,13 +15,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 $treatWarningsAsErrorsBool = [System.Convert]::ToBoolean($treatWarningsAsErrors)
+$useFolderStructureBool = [System.Convert]::ToBoolean($useFolderStructure)
 
 Write-Verbose "Entering script PublishFeaturesToAugurk.ps1"
 Write-Verbose "Features = $features"
 Write-Verbose "Connected Service Name = $connectedServiceName"
 Write-Verbose "Product Name = $productName"
-Write-Verbose "Group Name = $groupName"
 Write-Verbose "Version = $version"
+Write-Verbose "UseFolderStructure = $useFolderStructureBool"
+Write-Verbose "Group Name = $groupName"
 Write-Verbose "Language = $language"
 Write-Verbose "Augurk Location = $augurkLocation"
 Write-Verbose "Treat Warnings As Errors = $treatWarningsAsErrorsBool"
@@ -65,7 +68,7 @@ if (!$augurk)
 	} 
 }
 
-# Resolve the set of solutions we need to process
+# Resolve the set of feature files we need to process
 if ($features.Contains("*") -or $features.Contains("?")) {
 	Write-Verbose "Pattern found in features parameter."
 	Write-Verbose "Find-Files -SearchPattern $features"
@@ -87,11 +90,26 @@ while ($version -match "\$\((\w*\.\w*)\)") {
 $connectedService = Get-ServiceEndpoint -Name "$connectedServiceName" -Context $distributedTaskContext
 $augurkUri = $connectedService.Url
 
-# Determine the command line arguments to pass to the tool
-$arguments = @("publish", "--featureFiles=$($featureFiles -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
-
-# Invoke the tool
-Write-Output "& $augurk $arguments"
-& $augurk $arguments
+# Determine if we're using the parent folder names as groups
+if (!$useFolderStructureBool) {
+	# Determine the command line arguments to pass to the tool
+	$arguments = @("publish", "--featureFiles=$($featureFiles -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
+	
+	# Invoke the tool
+	Write-Output "& $augurk $arguments"
+	& $augurk $arguments
+} else {
+	# Group the files we're publishing by their parent folder
+	$featureFiles | Group -Property Directory | % {
+		# Determine the command line arguments to pass to the tool
+		Write-Verbose $_.Name
+		$groupName = Split-Path $_.Name -Leaf
+		$arguments = @("publish", "--featureFiles=$($_.Group -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
+	
+		# Invoke the tool
+		Write-Output "& $augurk $arguments"
+		& $augurk $arguments
+	}
+}
 	
 Write-Verbose "Leaving script PublishFeaturesToAugurk.ps1" 
