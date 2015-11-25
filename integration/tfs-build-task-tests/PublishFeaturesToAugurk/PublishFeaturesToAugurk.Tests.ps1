@@ -7,15 +7,15 @@ Describe "Publishes Features To Augurk" {
 		# Dummy function definitions so that we can Mock them
 		Function Find-Files { }
 		Function Get-ServiceEndpoint { }
-		Function Invoke-Tool { }
+		Function Invoke-Tool { param($Path, $Arguments) }
 		
 		Mock Import-Module
 		Mock Get-ServiceEndpoint { return "UrlToAugurkService" }
 		
 		Context "When Group Name Is Provided" {
-			Mock Find-Files { return [PSCustomObject]@{FullName = "SomeInteresting.feature"} }
-			Mock Invoke-Tool -Verifiable -ParameterFilter { $Arguments -like "*--groupName=SomeGroupName*" }
 			$augurk = New-Item TestDrive:\augurk.exe -Type File
+			Mock Find-Files { return [PSCustomObject]@{FullName = "SomeInteresting.feature"} }
+			Mock Invoke-Tool -Verifiable -ParameterFilter {	$Path -eq $augurk -and $Arguments -like "*--groupName=SomeGroupName*" }
 			
 			Invoke-BuildTask -TaskDefinitionFile $sut -- -connectedServiceName "SomeAugurkService" -productName "SomeProduct" -version "SomeVersion" -groupName "SomeGroupName" 
 				
@@ -25,13 +25,17 @@ Describe "Publishes Features To Augurk" {
 		}
 		
 		Context "When Folder Structure is used" {
-			Mock Find-Files { return [PSCustomObject]@{FullName = "SomeInteresting.feature"; Directory = "SomeParentFolder"} }
-			Mock Invoke-Tool -Verifiable -ParameterFilter { $Arguments -like "*--groupName=SomeParentFolder*" }
 			$augurk = New-Item TestDrive:\augurk.exe -Type File
+			Mock Find-Files { return @(
+				[PSCustomObject]@{FullName = "SomeInteresting.feature"; Directory = "SomeParentFolder"},
+				[PSCustomObject]@{FullName = "SomeOtherInteresting.feature"; Directory = "SomeOtherParentFolder"}
+			)}
+			Mock Invoke-Tool -Verifiable -ParameterFilter { $Path -eq $augurk -and $Arguments -like "*--groupName=SomeParentFolder*" }
+			Mock Invoke-Tool -Verifiable -ParameterFilter { $Path -eq $augurk -and $Arguments -like "*--groupName=SomeOtherParentFolder*" }
 			
 			Invoke-BuildTask -TaskDefinitionFile $sut -- -connectedServiceName "SomeAugurkService" -productName "SomeProduct" -version "SomeVersion" -useFolderStructure "True"
 				
-			It "Calls augurk.exe with the provided group name" {
+			It "Calls augurk.exe with the provided group names" {
 				Assert-VerifiableMocks
 			}
 		}

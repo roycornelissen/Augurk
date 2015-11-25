@@ -96,7 +96,7 @@ if (!$useFolderStructureBool) {
 	$arguments = @("publish", "--featureFiles=$($featureFiles -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
 	
 	# Invoke the tool
-	Invoke-Tool -Bladiebla $augurk -Arguments ($arguments -join " ")
+	Invoke-Tool -Path $augurk -Arguments ($arguments -join " ")
 } else {
 	# Group the files we're publishing by their parent folder
 	$featureFiles | Group -Property Directory | % {
