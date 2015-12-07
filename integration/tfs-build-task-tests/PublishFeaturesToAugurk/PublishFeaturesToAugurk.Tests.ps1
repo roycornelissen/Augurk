@@ -26,9 +26,13 @@ Describe "Publishes Features To Augurk" {
 		
 		Context "When Folder Structure is used" {
 			$augurk = New-Item TestDrive:\augurk.exe -Type File
+			New-Item TestDrive:\SomeParentFolder -Type Directory | Out-Null
+			New-Item TestDrive:\SomeParentFolder\SomeInteresting.feature -Type File | Out-Null
+			New-Item TestDrive:\SomeOtherParentFolder -Type Directory | Out-Null
+			New-Item TestDrive:\SomeOtherParentFolder\SomeOtherInteresting.feature -Type File | Out-Null
 			Mock Find-Files { return @(
-				[PSCustomObject]@{FullName = "SomeInteresting.feature"; Directory = "SomeParentFolder"},
-				[PSCustomObject]@{FullName = "SomeOtherInteresting.feature"; Directory = "SomeOtherParentFolder"}
+				"TestDrive:\SomeParentFolder\SomeInteresting.feature",
+				"TestDrive:\SomeOtherParentFolder\SomeOtherInteresting.feature"
 			)}
 			Mock Invoke-Tool -Verifiable -ParameterFilter { $Path -eq $augurk -and $Arguments -like "*--groupName=SomeParentFolder*" }
 			Mock Invoke-Tool -Verifiable -ParameterFilter { $Path -eq $augurk -and $Arguments -like "*--groupName=SomeOtherParentFolder*" }

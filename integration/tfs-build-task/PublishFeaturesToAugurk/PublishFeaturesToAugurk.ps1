@@ -99,14 +99,14 @@ if (!$useFolderStructureBool) {
 	Invoke-Tool -Path $augurk -Arguments ($arguments -join " ")
 } else {
 	# Group the files we're publishing by their parent folder
-	$featureFiles | Group -Property Directory | % {
+	$featureFiles | Get-Item | Group -Property Directory | % {
 		# Determine the command line arguments to pass to the tool
 		Write-Verbose $_.Name
 		$groupName = Split-Path $_.Name -Leaf
-		$arguments = @("publish", "--featureFiles=$($_.Group -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
+		$arguments = @("publish", "--featureFiles=`"$($_.Group -join '`",`"')`"", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
 	
 		# Invoke the tool
-		Invoke-Tool -Path $augurk -Arguments $arguments
+		Invoke-Tool -Path $augurk -Arguments ($arguments -join " ")
 	}
 }
 	
