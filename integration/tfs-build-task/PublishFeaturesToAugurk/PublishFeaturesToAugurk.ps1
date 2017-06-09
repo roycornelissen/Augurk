@@ -6,6 +6,7 @@ param(
 	[Parameter(Mandatory=$true)][string] $version,
 	[Parameter(Mandatory=$true)][string] $useFolderStructure,
 	[Parameter(Mandatory=$false)][string] $groupName,
+	[Parameter(Mandatory=$true)][string] $useIntegratedSecurity,
 	[Parameter(Mandatory=$true)][string] $language,
 	[Parameter(Mandatory=$true)][string] $augurkLocation,
 	[Parameter(Mandatory=$true)][string] $treatWarningsAsErrors
@@ -16,6 +17,7 @@ $ErrorActionPreference = "Stop"
 
 $treatWarningsAsErrorsBool = [System.Convert]::ToBoolean($treatWarningsAsErrors)
 $useFolderStructureBool = [System.Convert]::ToBoolean($useFolderStructure)
+$useIntegratedSecurityBool = [System.Convert]::ToBoolean($useIntegratedSecurity)
 
 Write-Verbose "Entering script PublishFeaturesToAugurk.ps1"
 Write-Verbose "Features = $features"
@@ -24,6 +26,7 @@ Write-Verbose "Product Name = $productName"
 Write-Verbose "Version = $version"
 Write-Verbose "UseFolderStructure = $useFolderStructureBool"
 Write-Verbose "Group Name = $groupName"
+Write-Verbose "Use Integrated Security = $useIntegratedSecurity"
 Write-Verbose "Language = $language"
 Write-Verbose "Augurk Location = $augurkLocation"
 Write-Verbose "Treat Warnings As Errors = $treatWarningsAsErrorsBool"
@@ -90,11 +93,17 @@ while ($version -match "\$\((\w*\.\w*)\)") {
 $connectedService = Get-ServiceEndpoint -Name "$connectedServiceName" -Context $distributedTaskContext
 $augurkUri = $connectedService.Url
 
+$publish = "publish"
+
+if ($useIntegratedSecurityBool) {
+	$publish = "publish --useIntegratedSecurity"
+}
+
 # Determine if we're using the parent folder names as groups
 if (!$useFolderStructureBool) {
 	# Determine the command line arguments to pass to the tool
-	$arguments = @("publish", "--featureFiles=$($featureFiles -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
-	
+	$arguments = @($publish, "--featureFiles=$($featureFiles -join ',')", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
+
 	# Invoke the tool
 	Invoke-Tool -Path $augurk -Arguments ($arguments -join " ")
 } else {
@@ -103,8 +112,8 @@ if (!$useFolderStructureBool) {
 		# Determine the command line arguments to pass to the tool
 		Write-Verbose $_.Name
 		$groupName = Split-Path $_.Name -Leaf
-		$arguments = @("publish", "--featureFiles=`"$($_.Group -join '`",`"')`"", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
-	
+		$arguments = @($publish, "--featureFiles=`"$($_.Group -join '`",`"')`"", "--productName=$productName", "--groupName=$groupName", "--version=$version", "--url=$augurkUri")
+
 		# Invoke the tool
 		Invoke-Tool -Path $augurk -Arguments ($arguments -join " ")
 	}
